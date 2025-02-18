@@ -62,8 +62,8 @@ export function getAudioFileSegment(path: string, startSecs: number, endSecs: nu
 }
 
 /**
- * Tells applications like Spotify to stop playing music.
- * Runs in background; does not wait for completion before continuing.  Executes quite quickly as a result, and not a `Promise`.
+ * Tells applications like Spotify and YouTube/Chrome to stop playing music.
+ * Runs in background; does not wait for completion before continuing.  Executes quickly as a result, and does not return a `Promise`.
  */
 export function stopPlayingMusic() {
 
@@ -129,7 +129,7 @@ export async function processAudioFileInChunks(path: string, chunkSecs: number, 
 /**
  * Streams the microphone input to an MP3 file on disk.
  */
-export function recordMicrophone(): {
+export function recordMicrophone(outPath: string): {
     /**
      * A `Promise` that completes when the streaming has completed, resolving to the path on disk where the audio was saved.
      */
@@ -144,7 +144,6 @@ export function recordMicrophone(): {
     stopPlayingMusic()
 
     // Start microphone -> file
-    const outPath = '/Users/jcohen/Downloads/audio.mp3'        // hard-coded for now
     const mic = spawn('sox', ['-d', '-t', 'mp3', '-c', '1', '-r', TARGET_VOICE_TO_TEXT_BITRATE.toString(), outPath]);
     const fStop = () => { mic.kill() }
     mic.stderr.on('data', (data) => {
