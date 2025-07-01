@@ -6,11 +6,6 @@ import ffmpeg from 'fluent-ffmpeg';
  */
 const TARGET_VOICE_TO_TEXT_BITRATE = 22050
 
-/**
- * When we playback audio for voice-to-text, use this playback speed.
- */
-const VOICE_TO_TEXT_PLAYBACK_RATE = 1.5
-
 export type AudioSegmentSettings = {
     startSecs: number,  // Start time in seconds
     endSecs: number,    // End time in seconds
@@ -138,7 +133,7 @@ export function stopPlayingMusic() {
  * @param fProcess The function to execute on each chunk.  `isTemporary` says whether this is a temporary chunk or the original file.
  * @returns An array of the paths to the chunks, e.g. for potential deletion / clean-up, or because you wanted to accumulate them.
  */
-export async function processAudioFileInChunks(path: string, chunkSecs: number, overlapSecs: number, fProcess: (path: string, isTemporary: boolean) => Promise<void>): Promise<void> {
+export async function processAudioFileInChunks(path: string, chunkSecs: number, overlapSecs: number, playbackSpeed: number, fProcess: (path: string, isTemporary: boolean) => Promise<void>): Promise<void> {
 
     // Get duration; if short enough, process as a single chunk and we're done, with no temporary files.
     const info = await getAudioFileInfo(path)
@@ -155,7 +150,7 @@ export async function processAudioFileInChunks(path: string, chunkSecs: number, 
             startSecs, endSecs,
             toMono: true,
             bitrateConversion: TARGET_VOICE_TO_TEXT_BITRATE,
-            playbackSpeed: VOICE_TO_TEXT_PLAYBACK_RATE,
+            playbackSpeed,
         })   // create temporary chunk file
         await fProcess(chunkPath, true)
         startSecs += chunkSecs - overlapSecs
