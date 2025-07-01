@@ -7,6 +7,19 @@ import ffmpeg from 'fluent-ffmpeg';
 const TARGET_VOICE_TO_TEXT_BITRATE = 22050
 
 /**
+ * When we playback audio for voice-to-text, use this playback speed.
+ */
+const VOICE_TO_TEXT_PLAYBACK_RATE = 1.5
+
+export type AudioSegmentSettings = {
+    startSecs: number,  // Start time in seconds
+    endSecs: number,    // End time in seconds
+    toMono?: boolean,
+    bitrateConversion?: number,  // Bitrate to convert to, e.g. 22050
+    playbackSpeed?: number,  // Optional playback speed from `0.5` to `2`
+}
+
+/**
  * Utility to run a bash command without waiting for it to complete.
  */
 function runBashWithoutWaiting(escapedBashString: string) {
@@ -42,17 +55,35 @@ export function getAudioFileInfo(path: string): Promise<{
  * Extracts segment of audio from an audio file, given absolute start and end seconds, returning the path to the newly-created file.
  * Also sets the bitrate of the output file, and converts to mono.
  */
-export function getAudioFileSegment(path: string, startSecs: number, endSecs: number, bitrateConversion: number): Promise<string> {
+export function getAudioFileSegment(path: string, settings: AudioSegmentSettings): Promise<string> {
     return new Promise((resolve, reject) => {
         // Construct the segmented path
-        const newPath = `${path}.segment-${startSecs}-${endSecs}.mp3`
+        const newPath = `${path}.segment-${settings.startSecs}-${settings.endSecs}.mp3`
+
         // Build the basic command
         let cmd = ffmpeg(path)
-            .setStartTime(startSecs)
-            .setDuration(endSecs - startSecs)
-            .noVideo()                  // in case we sent in a video file
-            .audioChannels(1)           // mono
-            .audioFrequency(bitrateConversion)
+            .setStartTime(settings.startSecs)
+            .setDuration(settings.endSecs - settings.startSecs)
+            .noVideo()                  // in case we were given a video file
+
+        // Convert to mono if specified
+        if (settings.toMono) {
+            cmd = cmd.audioChannels(1)  // set to mono
+        }
+
+        // Convert audio bitrate if specified
+        if (settings.bitrateConversion) {
+            cmd = cmd.audioBitrate(settings.bitrateConversion)  // set the bitrate
+        }
+
+        // Playback speed, if specified and not a trivial 1x, and clamped to 0.5-2
+        const playbackSpeed = !settings.playbackSpeed ? 1 : settings.playbackSpeed < 0.5 ? 0.5 : settings.playbackSpeed > 2 ? 2 : settings.playbackSpeed;
+        if (playbackSpeed != 1) {
+            cmd = cmd.audioFilters(`atempo=${playbackSpeed}`)  // set the playback speed
+        }
+
+        // The rest of the command -- output and hooks
+        cmd = cmd
             .output(newPath)
             .on('end', () => resolve(newPath))
             .on('error', (err) => reject(err));
@@ -120,7 +151,12 @@ export async function processAudioFileInChunks(path: string, chunkSecs: number, 
     let startSecs = 0
     while (startSecs < info.duration) {
         const endSecs = Math.min(startSecs + chunkSecs, info.duration)
-        const chunkPath = await getAudioFileSegment(path, startSecs, endSecs, TARGET_VOICE_TO_TEXT_BITRATE)   // create temporary chunk file
+        const chunkPath = await getAudioFileSegment(path, {
+            startSecs, endSecs,
+            toMono: true,
+            bitrateConversion: TARGET_VOICE_TO_TEXT_BITRATE,
+            playbackSpeed: VOICE_TO_TEXT_PLAYBACK_RATE,
+        })   // create temporary chunk file
         await fProcess(chunkPath, true)
         startSecs += chunkSecs - overlapSecs
     }
