@@ -1,6 +1,6 @@
 {
   "name": "@asmartbear/audio",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Controlling audio on Mac -- pausing, playing, recording",
   "keywords": [],
   "scripts": {
