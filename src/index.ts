@@ -59,6 +59,11 @@ export function getAudioFileSegment(path: string, settings: AudioSegmentSettings
         let cmd = ffmpeg(path)
             .setStartTime(settings.startSecs)
             .setDuration(settings.endSecs - settings.startSecs)
+            .outputOptions([
+                '-err_detect ignore_err',  // Ignore some errors
+                '-fflags +igndts',         // Ignore DTS errors
+                '-avoid_negative_ts make_zero'
+            ])
             .noVideo()                  // in case we were given a video file
 
         // Convert to mono if specified
