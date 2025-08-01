@@ -57,6 +57,7 @@ export function getAudioFileSegment(path: string, settings: AudioSegmentSettings
 
         // Build the basic command
         let cmd = ffmpeg(path)
+            .inputOption('-err_detect', 'ignore_err')
             .setStartTime(settings.startSecs)
             .setDuration(settings.endSecs - settings.startSecs)
             .outputOptions([
